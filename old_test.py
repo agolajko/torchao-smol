@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from typing import List
 
 import triton
+import triton.language as tl
+
 import torch
 from tabulate import tabulate
 from tqdm import tqdm
