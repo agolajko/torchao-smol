@@ -27,13 +27,17 @@ from torchao.prototype.blockwise_fp8_training.kernels import (
 
 fp8_gemm_configs_max_autotune_new = [
     triton.Config(
-        {"BLOCK_SIZE_M": block_size, "BLOCK_SIZE_N": block_size},
+        {"BLOCK_SIZE_M": block_size, "BLOCK_SIZE_N": block_size,
+         "BLOCK_SIZE_K": block_size_k,  # Add this
+         "GROUP_SIZE_M": 8, },
         num_warps=num_warps,
         num_stages=num_stages,
     )
     for block_size in [64, 128, 256]
     for num_warps in [4, 8]
     for num_stages in [2]
+    for block_size_k in [64, 128]  # Add this dimension
+
 ]
 
 EPS = 1e-12
