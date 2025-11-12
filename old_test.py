@@ -308,12 +308,22 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
     # scaled_mm requires A_s and B_t_s be in column-major format
     A_s = A_s.t().contiguous().t()
 
+    actual_scale_block_m = M // A_s.shape[0]
+    actual_scale_block_k = K // A_s.shape[1]
+    actual_scale_block_n = N // B_t_s.shape[1]
+
+    print(
+        f"Inferred scale blocks: M={actual_scale_block_m}, K={actual_scale_block_k}, N={actual_scale_block_n}")
+
     warmup(
         triton_fp8_blockwise_gemm,
         A_q,
         B_t_q,
         1.0 / A_s,
         1.0 / B_t_s,
+        scale_block_m=actual_scale_block_m,
+        scale_block_k=actual_scale_block_k,
+        scale_block_n=actual_scale_block_n,
         out_dtype=config.out_dtype,
     )
 
@@ -323,6 +333,9 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
         B_t_q,
         1.0 / A_s,
         1.0 / B_t_s,
+        scale_block_m=actual_scale_block_m,
+        scale_block_k=actual_scale_block_k,
+        scale_block_n=actual_scale_block_n,
         out_dtype=config.out_dtype,
     )
 
