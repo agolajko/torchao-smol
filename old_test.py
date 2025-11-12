@@ -9,6 +9,7 @@ import itertools
 from dataclasses import dataclass
 from typing import List
 
+import triton
 import torch
 from tabulate import tabulate
 from tqdm import tqdm
