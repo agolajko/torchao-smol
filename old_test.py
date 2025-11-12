@@ -25,7 +25,21 @@ from torchao.prototype.blockwise_fp8_training.kernels import (
 
 # =================================================
 
+fp8_gemm_configs_max_autotune = [
+    triton.Config(
+        {"BLOCK_SIZE_M": block_size, "BLOCK_SIZE_N": block_size},
+        num_warps=num_warps,
+        num_stages=num_stages,
+    )
+    for block_size in [64, 128, 256]
+    for num_warps in [4, 8]
+    for num_stages in [2]
+]
 
+EPS = 1e-12
+
+
+@triton.autotune(configs=fp8_gemm_configs_max_autotune, key=["N", "K", "BLOCK_SIZE_K"])
 @triton.jit
 def triton_fp8_blockwise_gemm_kernel(
     # Pointers to matrices
@@ -153,6 +167,10 @@ def triton_fp8_blockwise_gemm(
     scale_block_k: int = 128,
     scale_block_n: int = 128,
     out_dtype: torch.dtype = torch.float32,
+    BLOCK_SIZE_M: int = 128,  # Add these parameters
+    BLOCK_SIZE_N: int = 128,
+    BLOCK_SIZE_K: int = 128,
+    GROUP_SIZE_M: int = 8,
 ) -> torch.Tensor:
     """
     Blockwise-scaled FP8 GEMM with CTA swizzling.
@@ -205,6 +223,10 @@ def triton_fp8_blockwise_gemm(
         scale_block_k,
         scale_block_n,
         out_dtype=out_dtype,
+        BLOCK_SIZE_M=BLOCK_SIZE_M,  # Add these
+        BLOCK_SIZE_N=BLOCK_SIZE_N,
+        BLOCK_SIZE_K=BLOCK_SIZE_K,
+        GROUP_SIZE_M=GROUP_SIZE_M,
     )
 
     return c
