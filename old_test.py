@@ -389,6 +389,8 @@ def print_results(experiments: List[Experiment]):
             (experiment.result.bf16_mm_us / 1e6)
         triton_tflops_per_sec = (flops / 1e12) / \
             (experiment.result.fp8_triton_us / 1e6)
+        fp_new_tflops_per_sec = (flops / 1e12) / \
+            (experiment.result.fp8_new / 1e6)
 
         rows.append(
             [
@@ -401,6 +403,7 @@ def print_results(experiments: List[Experiment]):
                 experiment.result.fp8_new,
                 bf16_mm_tflops_per_sec,
                 triton_tflops_per_sec,
+                fp_new_tflops_per_sec
             ]
         )
     print(tabulate(rows, headers=headers))
