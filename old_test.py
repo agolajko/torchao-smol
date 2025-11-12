@@ -223,10 +223,6 @@ def triton_fp8_blockwise_gemm(
         scale_block_k,
         scale_block_n,
         out_dtype=out_dtype,
-        BLOCK_SIZE_M=BLOCK_SIZE_M,  # Add these
-        BLOCK_SIZE_N=BLOCK_SIZE_N,
-        BLOCK_SIZE_K=BLOCK_SIZE_K,
-        GROUP_SIZE_M=GROUP_SIZE_M,
     )
 
     return c
