@@ -43,7 +43,6 @@ class ExperimentConfig:
 class ExperimentResult:
     bf16_mm_us: float
     fp8_triton_us: float
-    fp8_scaled_mm_us: float
 
 
 @dataclass(frozen=True)
@@ -115,28 +114,9 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
     # scaled_mm requires A_s and B_t_s be in column-major format
     A_s = A_s.t().contiguous().t()
 
-    warmup(
-        torch._scaled_mm,
-        A_q,
-        B_t_q,
-        1.0 / A_s,
-        1.0 / B_t_s,
-        out_dtype=config.out_dtype,
-    )
-
-    fp8_scaled_mm_us = benchmark_cuda_function_in_microseconds(
-        torch._scaled_mm,
-        A_q,
-        B_t_q,
-        1.0 / A_s,
-        1.0 / B_t_s,
-        out_dtype=config.out_dtype,
-    )
-
     return ExperimentResult(
         bf16_mm_us=bf16_mm_us,
         fp8_triton_us=fp8_triton_us,
-        fp8_scaled_mm_us=fp8_scaled_mm_us,
     )
 
 
@@ -148,10 +128,8 @@ def print_results(experiments: List[Experiment]):
         "out_dtype",
         "bf16_mm_us",
         "fp8_triton_us",
-        "fp8_scaled_mm_us",
         "bf16 tflops/sec",
         "triton tflops/sec",
-        "scaled_mm tflops/sec",
     ]
     rows = []
     for experiment in experiments:
@@ -161,9 +139,7 @@ def print_results(experiments: List[Experiment]):
             (experiment.result.bf16_mm_us / 1e6)
         triton_tflops_per_sec = (flops / 1e12) / \
             (experiment.result.fp8_triton_us / 1e6)
-        scaled_mm_tflops_per_sec = (flops / 1e12) / (
-            experiment.result.fp8_scaled_mm_us / 1e6
-        )
+
         rows.append(
             [
                 m,
@@ -172,10 +148,8 @@ def print_results(experiments: List[Experiment]):
                 experiment.config.out_dtype,
                 experiment.result.bf16_mm_us,
                 experiment.result.fp8_triton_us,
-                experiment.result.fp8_scaled_mm_us,
                 bf16_mm_tflops_per_sec,
                 triton_tflops_per_sec,
-                scaled_mm_tflops_per_sec,
             ]
         )
     print(tabulate(rows, headers=headers))
