@@ -25,7 +25,7 @@ from torchao.prototype.blockwise_fp8_training.kernels import (
 
 # =================================================
 
-fp8_gemm_configs_max_autotune = [
+fp8_gemm_configs_max_autotune_new = [
     triton.Config(
         {"BLOCK_SIZE_M": block_size, "BLOCK_SIZE_N": block_size},
         num_warps=num_warps,
@@ -39,7 +39,7 @@ fp8_gemm_configs_max_autotune = [
 EPS = 1e-12
 
 
-@triton.autotune(configs=fp8_gemm_configs_max_autotune, key=["N", "K", "BLOCK_SIZE_K"])
+@triton.autotune(configs=fp8_gemm_configs_max_autotune_new, key=["N", "K", "BLOCK_SIZE_K"])
 @triton.jit
 def triton_fp8_blockwise_gemm_kernel(
     # Pointers to matrices
