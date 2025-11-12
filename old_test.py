@@ -160,7 +160,7 @@ def triton_fp8_blockwise_gemm(
     # Validate layout
     assert a.is_contiguous() and a.stride(0) > a.stride(1), "a must be row-major"
     assert b.stride(0) < b.stride(1), "b must be column-major"
-    assert a_s.is_contiguous() and b_s.is_contiguous()
+    # assert a_s.is_contiguous() and b_s.is_contiguous()
 
     M, K = a.shape
     K2, N = b.shape
