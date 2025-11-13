@@ -13,7 +13,7 @@ import torch
 from tabulate import tabulate
 from tqdm import tqdm
 from triton.testing import do_bench
-from torch.nn.functional import pad, scaled_mm
+from torch.nn.functional import scaled_mm
 
 from torchao.prototype.blockwise_fp8_training.kernels import (
     triton_fp8_blockwise_act_quant_lhs,
@@ -122,7 +122,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
         B_t_q,
         1.0 / A_s,
         1.0 / B_t_s,
-        out_dtype=config.out_dtype,
+        output_dtype=config.out_dtype,
     )
 
     fp8_scaled_mm_us = benchmark_cuda_function_in_microseconds(
@@ -131,7 +131,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
         B_t_q,
         1.0 / A_s,
         1.0 / B_t_s,
-        out_dtype=config.out_dtype,
+        output_dtype=config.out_dtype,
     )
 
     return ExperimentResult(
