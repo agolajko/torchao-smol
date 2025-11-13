@@ -13,7 +13,7 @@ import torch
 from tabulate import tabulate
 from tqdm import tqdm
 from triton.testing import do_bench
-from torch.nn.functional import scaled_mm
+from torch.nn.functional import scaled_mm, ScalingType
 
 from torchao.prototype.blockwise_fp8_training.kernels import (
     triton_fp8_blockwise_act_quant_lhs,
@@ -116,12 +116,17 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
     # scaled_mm requires A_s and B_t_s be in column-major format
     A_s = A_s.t().contiguous().t()
 
+    scale_recipe_a = ScalingType.BlockWise1x128
+    scale_recipe_b = ScalingType.BlockWise1x128
+
     warmup(
         scaled_mm,
         A_q,
         B_t_q,
         1.0 / A_s,
+        scale_recipe_a,
         1.0 / B_t_s,
+        scale_recipe_b,
         output_dtype=config.out_dtype,
     )
 
@@ -130,7 +135,9 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
         A_q,
         B_t_q,
         1.0 / A_s,
+        scale_recipe_a,
         1.0 / B_t_s,
+        scale_recipe_b,
         output_dtype=config.out_dtype,
     )
 
