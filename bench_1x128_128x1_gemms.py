@@ -114,23 +114,29 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
         out_dtype=config.out_dtype,
     )
 
-    # Warm up then run torch bench
+    scale_recipe_a = ScalingType.BlockWise1x128
+    scale_recipe_b = ScalingType.BlockWise128x128
+
     warmup(
-        torch._scaled_mm,
+        scaled_mm,
         A_t_q,
         B_q,
         1.0 / A_t_s,
+        scale_recipe_a,
         1.0 / B_s,
-        out_dtype=config.out_dtype,
+        scale_recipe_b,
+        output_dtype=config.out_dtype,
     )
 
     fp8_scaled_mm_us = benchmark_cuda_function_in_microseconds(
-        torch._scaled_mm,
+        scaled_mm,
         A_t_q,
         B_q,
         1.0 / A_t_s,
+        scale_recipe_a,
         1.0 / B_s,
-        out_dtype=config.out_dtype,
+        scale_recipe_b,
+        output_dtype=config.out_dtype,
     )
 
     return ExperimentResult(

@@ -117,7 +117,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
     A_s = A_s.t().contiguous().t()
 
     scale_recipe_a = ScalingType.BlockWise1x128
-    scale_recipe_b = ScalingType.BlockWise1x128
+    scale_recipe_b = ScalingType.BlockWise128x128
 
     warmup(
         scaled_mm,
