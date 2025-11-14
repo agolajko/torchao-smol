@@ -13,12 +13,14 @@ import torch
 from tabulate import tabulate
 from tqdm import tqdm
 from triton.testing import do_bench
+
 from torch.nn.functional import scaled_mm, ScalingType
 
+
 from torchao.prototype.blockwise_fp8_training.kernels import (
-    triton_fp8_blockwise_act_quant_lhs,
-    triton_fp8_blockwise_weight_quant_transposed_rhs,
-    triton_fp8_gemm_1x128_128x128,
+    triton_fp8_blockwise_act_quant_rhs,
+    triton_fp8_blockwise_act_quant_transposed_lhs,
+    triton_fp8_gemm_1x128_128x1,
 )
 
 device = torch.device("cuda")
@@ -75,70 +77,60 @@ def get_configs() -> List[ExperimentConfig]:
 
 
 def run_experiment(config: ExperimentConfig) -> ExperimentResult:
-    # Simulate `grad_input = grad_output @ weight`
+    # Simulate `grad_weight = grad_output_t @ input`
     M, N, K = config.m, config.n, config.k
-    A = torch.randn(M, K, dtype=config.out_dtype, device="cuda")
-    B = torch.randn(N, K, dtype=config.out_dtype, device="cuda")
-    A_q, A_s = triton_fp8_blockwise_act_quant_lhs(A, dtype=torch.float8_e4m3fn)
-    B_t_q, B_t_s = triton_fp8_blockwise_weight_quant_transposed_rhs(
-        B, dtype=torch.float8_e4m3fn
+    A = torch.randn(M, N, dtype=config.out_dtype, device="cuda")
+    B = torch.randn(M, K, dtype=config.out_dtype, device="cuda")
+    A_t_q, A_t_s = triton_fp8_blockwise_act_quant_transposed_lhs(
+        A, dtype=torch.float8_e4m3fn
     )
+    B_q, B_s = triton_fp8_blockwise_act_quant_rhs(B, dtype=torch.float8_e4m3fn)
 
     def warmup(func, *args, **kwargs):
         for _ in range(10):
             func(*args, **kwargs)
 
     # Warmup then run bf16 torch.mm
-    warmup(torch.mm, A, B.t())
+    warmup(torch.mm, A.t(), B)
 
-    bf16_mm_us = benchmark_cuda_function_in_microseconds(torch.mm, A, B.t())
+    bf16_mm_us = benchmark_cuda_function_in_microseconds(torch.mm, A.t(), B)
 
     # Warm up then run triton bench
     warmup(
-        triton_fp8_gemm_1x128_128x128,
-        A_q,
-        B_t_q,
-        1.0 / A_s,
-        1.0 / B_t_s,
+        triton_fp8_gemm_1x128_128x1,
+        A_t_q,
+        B_q,
+        1.0 / A_t_s,
+        1.0 / B_s,
         out_dtype=config.out_dtype,
     )
 
     fp8_triton_us = benchmark_cuda_function_in_microseconds(
-        triton_fp8_gemm_1x128_128x128,
-        A_q,
-        B_t_q,
-        1.0 / A_s,
-        1.0 / B_t_s,
+        triton_fp8_gemm_1x128_128x1,
+        A_t_q,
+        B_q,
+        1.0 / A_t_s,
+        1.0 / B_s,
         out_dtype=config.out_dtype,
     )
 
     # Warm up then run torch bench
-    # scaled_mm requires A_s and B_t_s be in column-major format
-    A_s = A_s.t().contiguous().t()
-
-    scale_recipe_a = ScalingType.BlockWise1x128
-    scale_recipe_b = ScalingType.BlockWise1x128
-
     warmup(
-        scaled_mm,
-        A_q,
-        B_t_q,
-        1.0 / A_s,
-        scale_recipe_a,
-        1.0 / B_t_s,
-        scale_recipe_b,
-        output_dtype=config.out_dtype,
+        torch._scaled_mm,
+        A_t_q,
+        B_q,
+        1.0 / A_t_s,
+        1.0 / B_s,
+        out_dtype=config.out_dtype,
     )
 
     fp8_scaled_mm_us = benchmark_cuda_function_in_microseconds(
-        scaled_mm,
-        A_q,
-        B_t_q,
-        1.0 / A_s,
-        scale_recipe_a,
-        1.0 / B_t_s,
-        scale_recipe_b,
-        output_dtype=config.out_dtype,
+        torch._scaled_mm,
+        A_t_q,
+        B_q,
+        1.0 / A_t_s,
+        1.0 / B_s,
+        out_dtype=config.out_dtype,
     )
 
     return ExperimentResult(
